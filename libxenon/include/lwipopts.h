@@ -37,18 +37,19 @@
 #include <string.h>
 #include <stdio.h>
 
-#define NO_SYS                  1
-#define NO_SYS_NO_TIMERS		1
+#define NO_SYS                  0
+#define NO_SYS_NO_TIMERS		0
 #define ETHARP_TRUST_IP_MAC		1
 
 #define LWIP_CALLBACK_API       1
 #define LWIP_TCP                1
 #define LWIP_UDP                1
 #define LWIP_DHCP               1
-#define LWIP_SOCKET             0
-#define LWIP_NETCONN            0
+#define LWIP_SOCKET             1
+#define LWIP_NETCONN            1
 #define LWIP_NETIF_HOSTNAME     1
 
+#define LWIP_PROVIDE_ERRNO      1
 #define MEM_ALIGNMENT           4
 #define MEM_SIZE                (4 * 1024 * 1024)
 #define MEMP_NUM_PBUF           1024
@@ -56,8 +57,8 @@
 #define MEMP_NUM_TCP_PCB        20
 #define MEMP_NUM_TCP_PCB_LISTEN 16
 #define MEMP_NUM_TCP_SEG        128
-#define MEMP_NUM_NETBUF         0
-#define MEMP_NUM_NETCONN        0
+#define MEMP_NUM_NETBUF         2
+#define MEMP_NUM_NETCONN        4
 #define MEMP_NUM_SYS_TIMEOUT    20
 #define PBUF_POOL_SIZE          512
 #define TCP_TTL                 255
@@ -71,7 +72,8 @@
 #define DHCP_DOES_ARP_CHECK     1
 
 
-//#define LWIP_DEBUG 					1
+#define LWIP_DEBUG 					1
+#define API_LIB_DEBUG LWIP_DBG_ON
 //#define DHCP_DEBUG                    LWIP_DBG_ON
 //#define NETIF_DEBUG                   LWIP_DBG_ON
 //#define TIMERS_DEBUG                  LWIP_DBG_ON

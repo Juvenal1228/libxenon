@@ -35,11 +35,35 @@
 #ifndef __SYS_C64_H__
 #define __SYS_C64_H__
 
-#define SYS_MBOX_NULL 0
-#define SYS_SEM_NULL  0
+#include <threads/mutex.h>
+#include <threads/threads.h>
+#define SYS_MBOX_NULL NULL
+#define SYS_SEM_NULL  NULL
 
-typedef int sys_sem_t;
+//#define sys_sem_valid(sem) (((sem) != NULL)) // && (*(sem) != NULL))
+//#define sys_sem_set_invalid(sem) do { if((sem) != NULL) { *(sem) = NULL; }}while(0)
+
+/* let sys.h use binary semaphores for mutexes */
+#define LWIP_COMPAT_MUTEX 1
+
+//#define sys_mbox_valid(mbox) (((mbox) != NULL) && (*(mbox) != NULL))
+//#define sys_mbox_set_invalid(mbox) do { if((mbox) != NULL) { *(mbox) = NULL; }}while(0)
+
+typedef struct sys_mutex_wrap
+{
+    MUTEX mutex;
+    int valid;
+} sys_mutex_wrap_t;
+
+typedef struct sys_thread_wrap
+{
+    THREAD thread;
+    
+} sys_thread_wrap_t;
+
+typedef sys_mutex_wrap_t sys_sem_t;
+typedef sys_mutex_wrap_t sys_mutex_t;
 typedef int sys_mbox_t;
-typedef int sys_thread_t;
+typedef sys_thread_wrap_t sys_thread_t;
 
 #endif /* __SYS_C64_H__ */
