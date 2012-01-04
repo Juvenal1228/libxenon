@@ -51,19 +51,35 @@
 
 typedef struct sys_mutex_wrap
 {
-    MUTEX mutex;
+    struct _MUTEX mutex;
     int valid;
 } sys_mutex_wrap_t;
 
 typedef struct sys_thread_wrap
 {
-    THREAD thread;
+    struct _THREAD *thread;
     
 } sys_thread_wrap_t;
 
+#define SYS_MBOX_SIZE 128
+
+typedef struct sys_mbox_msg {
+  struct sys_mbox_msg *next;
+  void *msg;
+} sys_mbox_msg_t;
+
+typedef struct sys_mbox {
+  int first, last;
+  void *msgs[SYS_MBOX_SIZE];
+  struct sys_mutex_wrap *not_empty;
+  struct sys_mutex_wrap *not_full;
+  struct sys_mutex_wrap *mutex;
+  int wait_send;
+} sys_mbox_t;
+
 typedef sys_mutex_wrap_t sys_sem_t;
 typedef sys_mutex_wrap_t sys_mutex_t;
-typedef int sys_mbox_t;
+//typedef int sys_mbox_t;
 typedef sys_thread_wrap_t sys_thread_t;
 
 #endif /* __SYS_C64_H__ */

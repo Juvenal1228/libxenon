@@ -40,6 +40,7 @@
 #define NO_SYS                  0
 #define NO_SYS_NO_TIMERS		0
 #define ETHARP_TRUST_IP_MAC		1
+#define LWIP_TCPIP_CORE_LOCKING 0
 
 #define LWIP_CALLBACK_API       1
 #define LWIP_TCP                1

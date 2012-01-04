@@ -76,14 +76,17 @@ err_t sys_sem_new(sys_sem_t *sem, u8_t count)
     printf("sys_sem_new(count=%0u", count);
     //malloc the sem struct
     sem = (sys_sem_t*)malloc(sizeof(sys_sem_t));
+    memset(sem, 0, sizeof(sys_sem_t));
     //make the mutex call
     MUTEX *mut = mutex_create(count);
     //memory errors?
     if (mut == NULL) {
-        return SYS_SEM_NULL;
+        return ERR_MEM;
     }
-    memcpy(&sem->mutex, mut, sizeof(MUTEX));
     sem->valid = 1;
+    //memcpy(&sem->mutex, mut, sizeof(MUTEX));
+    sem->mutex = *mut;
+    printf("Valid: %x", sem->valid);
     printf(")\n");
     return ERR_OK;
 }
@@ -101,27 +104,32 @@ void sys_sem_signal(sys_sem_t *sem)
     mutex_release(&sem->mutex);
 }
 
+
 int sys_sem_valid(sys_sem_t *sem)
 {
     printf("sys_sem_valid()\n");
     //sem->valid = 1;
-    printf("%i\n", sem->valid);
-    return (int)sem->valid;
+    //printf("%i\n", (int)sem->valid);
+    return (sem != NULL); // && ((*sem) != NULL);
+    //return (int)sem->valid;
 }
 void sys_sem_set_invalid(sys_sem_t *sem)
 {
     printf("sys_sem_set_invalid()\n");
-    sem->valid = 0;
+    sem = NULL;
 }
+
 
 u32_t sys_arch_sem_wait(sys_sem_t *sem, u32_t timeout)
 {
     printf("sys_arch_sem_wait(timeout=%0u", timeout);
+    printf(" 0x%x", sem->mutex.CurrentLockCount);
     unsigned int start = sys_now();
     //make the mutex call
     unsigned int aqrd = mutex_acquire(&sem->mutex, timeout);
     //0=timeout
     if (aqrd == 0) {
+        printf("timeout!");
         return SYS_ARCH_TIMEOUT;
     }
     unsigned int end = sys_now();
@@ -130,32 +138,72 @@ u32_t sys_arch_sem_wait(sys_sem_t *sem, u32_t timeout)
     return (end - start);
 }
 
+
 int sys_mbox_valid(sys_mbox_t *mbox)
 {
     printf("sys_mbox_valid()\n");
-    return 0;
+    return (mbox != NULL) && ((*mbox) != NULL);
 }
 void sys_mbox_set_invalid(sys_mbox_t *mbox)
 {
     printf("sys_mbox_set_invalid()\n");
+    mbox = NULL;
 }
+
 
 err_t sys_mbox_new(sys_mbox_t *mbox, int size)
 {
     printf("sys_mbox_new()\n");
+    mbox = (sys_mbox_t*)malloc(sizeof(sys_mbox_t));
+    if (mbox == NULL) {
+        return ERR_MEM;
+    }
+    mbox->first = mbox->last = 0;
+    mbox->wait_send = 0;
+    sys_sem_new(mbox->not_empty, 0);
+    sys_sem_new(mbox->not_full, 0);
+    sys_sem_new(mbox->mutex, 1);
     return ERR_OK;
 }
 
 void sys_mbox_free(sys_mbox_t *mbox)
 {
     printf("sys_mbox_free()\n");
-    return;
+    sys_arch_sem_wait(&mbox->mutex, 0);
+    sys_sem_free(&mbox->not_empty);
+    sys_sem_free(&mbox->not_full);
+    sys_sem_free(&mbox->mutex);
+    free(mbox);
 }
 
 void sys_mbox_post(sys_mbox_t *mbox, void *msg)
 {
     printf("sys_mbox_post()\n");
-    return;
+    sys_arch_sem_wait(&mbox->mutex, 0);
+    u8_t first;
+    while ((mbox->last + 1) >= (mbox->first + SYS_MBOX_SIZE)) {
+        mbox->wait_send++;
+        sys_sem_signal(&mbox->mutex);
+        sys_arch_sem_wait(&mbox->not_full, 0);
+        sys_arch_sem_wait(&mbox->mutex, 0);
+        mbox->wait_send--;
+    }
+    
+    mbox->msgs[mbox->last % SYS_MBOX_SIZE] = msg;
+    
+    if (mbox->last == mbox->first) {
+        first = 1;
+    } else {
+        first = 0;
+    }
+
+    mbox->last++;
+
+    if (first) {
+        sys_sem_signal(&mbox->not_empty);
+    }
+
+    sys_sem_signal(&mbox->mutex);
 }
 
 u32_t sys_arch_mbox_fetch(sys_mbox_t *mbox, void **msg, u32_t timeout)
@@ -173,17 +221,49 @@ u32_t sys_arch_mbox_tryfetch(sys_mbox_t *mbox, void **msg)
 err_t sys_mbox_trypost(sys_mbox_t *mbox, void *msg)
 {
     printf("sys_mbox_trypost()\n");
+    u8_t first;
+    sys_arch_sem_wait(&mbox->mutex, 0);
+
+    LWIP_DEBUGF(SYS_DEBUG, ("sys_mbox_trypost: mbox %p msg %p\n",
+                          (void *)mbox, (void *)msg));
+
+    if ((mbox->last + 1) >= (mbox->first + SYS_MBOX_SIZE)) {
+        sys_sem_signal(&mbox->mutex);
+        return ERR_MEM;
+    }
+
+    mbox->msgs[mbox->last % SYS_MBOX_SIZE] = msg;
+
+    if (mbox->last == mbox->first) {
+        first = 1;
+    } else {
+        first = 0;
+    }
+
+    mbox->last++;
+
+    if (first) {
+        sys_sem_signal(&mbox->not_empty);
+    }
+
+    sys_sem_signal(&mbox->mutex);
+
     return ERR_OK;
 }
 
 sys_thread_t sys_thread_new(const char *name, lwip_thread_fn thread, void *arg, int stacksize, int prio)
 {
     printf("sys_thread_new(name=%s, stacksize=%i, prio=%i", name, stacksize, prio);
-    //PTHREAD thread_create(void* entrypoint, unsigned int stack_size,
-    //    void* argument, unsigned int flags);
-    sys_thread_t *thrd = malloc(sizeof(sys_thread_t));
-    memcpy(&thrd->thread, thread_create(thread, stacksize, arg, prio), sizeof(THREAD));
-    thread_resume(&thrd->thread);
+    //malloc the thread wrapper structure
+    sys_thread_t * thrd = malloc(sizeof(sys_thread_t));
+    //create the actual thread
+    PTHREAD pthrd = thread_create(thread, stacksize, arg, prio);
+    if (!pthrd) {
+        printf("thread %s creation failed!\n", name);
+    }
+    //stick it in (deep)
+    thrd->thread = pthrd;
+    thread_resume(thrd->thread);
     printf(")\n");
     return *thrd;
 }
