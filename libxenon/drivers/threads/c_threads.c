@@ -54,7 +54,7 @@ static void thread_interrupt_unexpected(unsigned int soc_interrupt)
 
 unsigned long long _system_time = 0; // System Timer (Used for telling time)
 unsigned long long _clock_time = 0; // Clock Timer (Used for timing stuff)
-unsigned long long _millisecond_clock_time = 0; // Millisecond Clock Timer
+volatile unsigned long long _millisecond_clock_time = 0; // Millisecond Clock Timer
 static void thread_interrupt_clock(unsigned int soc_interrupt)
 {
     stw((volatile void*)0xEA00106C, 0x01000000);
@@ -306,6 +306,11 @@ PTHREAD thread_schedule_core()
             pthr->PreviousThread->NextThread = pthr->NextThread;
             pthr->NextThreadFull->PreviousThreadFull = pthr->PreviousThreadFull;
             pthr->PreviousThreadFull->NextThreadFull = pthr->NextThreadFull;
+			// Make sure we dont explode
+			if(pthr == processor->FirstThread)
+				processor->FirstThread = pthr->NextThread;
+			if(pthr == processor->LastThread)
+				processor->LastThread = pthr->PreviousThread;
             // Mark as unused
             pthr->Valid = 0;
         }
@@ -341,7 +346,7 @@ PTHREAD thread_schedule_core()
     pthr = processor->FirstThread;
     do
     {
-        if((pthr->SuspendCount == 0) && (pthr->SleepTime == 0) && pthr->Valid)
+        if((pthr->ThreadTerminated == 0) && (pthr->SuspendCount == 0) && (pthr->SleepTime == 0) && pthr->Valid)
         {
             if(readyList.FirstThread == NULL)
             {
@@ -510,7 +515,7 @@ void system_call_handler()
     restore_thread_context(&context);
 }
 
-void thread_sleep(int milliseconds)
+void thread_sleep(unsigned int milliseconds)
 {
     PROCESSOR_DATA_BLOCK *processor = thread_get_processor_block();
     unsigned long long sleep_time = _millisecond_clock_time + milliseconds;
@@ -673,9 +678,9 @@ void thread_terminate(unsigned int returnCode)
 
 void thread_proc_startup(thread_proc entrypoint, void* argument)
 {
-    printf("Thread Start %08X\n", thread_get_processor_block()->CurrentThread);
+    //printf("Thread Start %08X\n", thread_get_processor_block()->CurrentThread);
     int ret = entrypoint(argument);
-    printf("Thread End %08X\n", thread_get_processor_block()->CurrentThread);
+    //printf("Thread End %08X\n", thread_get_processor_block()->CurrentThread);
     
     thread_terminate(ret);
 }

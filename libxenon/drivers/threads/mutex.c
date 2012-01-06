@@ -50,14 +50,15 @@ void mutex_setlockcount(MUTEX *mutex, unsigned int lock_count)
 unsigned int mutex_acquire(MUTEX *mutex, int timeout)
 {
     int acquired = 0;
-    
+    //printf("PreLock\n");
     lock(&mutex->Lock);
     
-    if(mutex->CurrentLockCount == 0)
+    if(mutex->CurrentLockCount < mutex->MaximumLockCount)
     {
         // We own this mutex
-        mutex->CurrentLockCount = 1;
         acquired = 1;
+        mutex->CurrentLockCount++;
+        //printf("EasyButton\n");
     }
     else
     {
@@ -76,26 +77,32 @@ unsigned int mutex_acquire(MUTEX *mutex, int timeout)
     
     unlock(&mutex->Lock);
     
-    if(acquired)
+    if(acquired) {
+        //printf("EasyExit\n");
         return 1;
+    }
     
     // Wait for the timeout
+    //printf("PreAquireSleep\n");
     thread_get_current()->WaitingForMutex = 1;
     thread_sleep(timeout);
-    
+    //printf("PostComa waiting=%i\n", thread_get_current()->WaitingForMutex);
     // Lock
     lock(&mutex->Lock);
-    unsigned int irql = thread_spinlock(&ThreadListLock);
+    //unsigned int irql = thread_spinlock(&ThreadListLock);
     
     // Check the result
+    //printf("PreCheckRes\n");
     if(thread_get_current()->WaitingForMutex)
     {
         acquired = 0;
-        
+        //printf("WeDidntGetIt\n");
         // Remove ourself from the mutex list
         PTHREAD pthr = thread_get_current();
-        pthr->NextThreadMutex->PreviousThreadMutex = pthr->PreviousThreadMutex;
-        pthr->PreviousThreadMutex->NextThreadMutex = pthr->NextThreadMutex;
+        if (pthr->NextThreadMutex)
+            pthr->NextThreadMutex->PreviousThreadMutex = pthr->PreviousThreadMutex;
+        if (pthr->PreviousThreadMutex)
+            pthr->PreviousThreadMutex->NextThreadMutex = pthr->NextThreadMutex;
         if(mutex->FirstWaiting == pthr)
             mutex->FirstWaiting = pthr->NextThreadMutex;
         if(mutex->LastWaiting == pthr)
@@ -104,14 +111,16 @@ unsigned int mutex_acquire(MUTEX *mutex, int timeout)
             mutex->FirstWaiting = NULL;
         if(mutex->LastWaiting == pthr)
             mutex->LastWaiting = NULL;
+        //printf(":/\n");
     }
-    else
+    else {
+        //printf("WeGotIt!\n");
         acquired = 1;
-    
+    }
     // Unlock
-    thread_unlock(&ThreadListLock, irql);
+    //thread_unlock(&ThreadListLock, irql);
     unlock(&mutex->Lock);
-    
+    //printf("PostUnlock\n");
     // Exit
     return acquired;
 }
