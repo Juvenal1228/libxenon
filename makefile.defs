@@ -1,0 +1,8 @@
+PREFIX=/usr/local/xenon
+
+#cleaned list of all *.h files in project, including directory
+H_FILES	:=	$(sort $(subst ../libxenon,,$(shell find ../libxenon/ -name *.h)))
+
+#cleaned list of all directories containing *.h files
+H_DIRS	:=	$(sort $(subst /drivers/,/include/,$(foreach file,$(H_FILES),$(dir $(file)))))
+H_DIRS	+=	/include/sys/

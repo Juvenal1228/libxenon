@@ -1,0 +1,29 @@
+.PHONY: install installdirs
+
+# shortcut to avoid long crappy names
+dir=$(DESTDIR)$(PREFIX)/usr
+
+installdirs:
+	@echo installing directories to $(dir)
+	@for hdir in $(H_DIRS) ; do \
+		install -d "$(dir)$${hdir}" ; \
+	done
+	@install -d "$(dir)/lib"
+	@install -d "$(DESTDIR)$(PREFIX)/lib"
+
+install: installdirs
+	@echo installing to $(dir)
+	@echo installing headers...
+	@for hfile in $(H_FILES) ; do \
+		install "../libxenon$${hfile}" "$(dir)$$(dirname $${hfile} | sed 's/drivers/include/')" ; \
+	done
+	@install "../libxenon/drivers/newlib/dirent.h" "$(dir)/include/sys/"
+	@echo installing libraries...
+	@install libxenon.a "$(dir)/lib/"
+	@echo installing unicorns to tie it all together...
+	@install ../devkitxenon/rules "$(DESTDIR)$(PREFIX)"
+	@install ../devkitxenon/app.lds "$(DESTDIR)$(PREFIX)"
+	@install libxenon/startup/xenon/crt1.o "$(DESTDIR)$(PREFIX)/lib"
+	@install libxenon/ports/xenon/crti.o "$(DESTDIR)$(PREFIX)/lib"
+	@install libxenon/ports/xenon/crtn.o "$(DESTDIR)$(PREFIX)/lib"
+	@echo install done!
