@@ -23,7 +23,6 @@ C_UPPER_DEPS :=
 
 # Every subdirectory with source files must be described here
 SUBDIRS := \
-usr/xenon/lib \
 libxenon/startup/xenon \
 libxenon/ports/xenon \
 libxenon/drivers/xenos \

@@ -1,8 +1,13 @@
 PREFIX=/usr/local/xenon
+LWIP_MODE=ipv4
 
 #cleaned list of all *.h files in project, including directory
-H_FILES	:=	$(sort $(subst ../libxenon,,$(shell find ../libxenon/ -name *.h)))
+H_FILES := $(sort $(subst ../libxenon,,$(shell find ../libxenon/ ! -wholename */lwip/* -name *.h)))
+H_LWIP_FILES := $(sort $(subst ../libxenon,,$(shell find ../libxenon/drivers/lwip/include/lwip/ -name *.h)))
+H_LWIPMODE_FILES := $(sort $(subst ../libxenon,,$(shell find ../libxenon/drivers/lwip/include/$(LWIP_MODE)/lwip/ -name *.h)))
+H_NETIF_FILES := $(sort $(subst ../libxenon,,$(shell find ../libxenon/drivers/lwip/include/netif/ -name *.h)))
+H_ARCH_FILES := $(sort $(subst ../libxenon,,$(shell find ../libxenon/drivers/lwip/xenon/include/arch/ -name *.h)))
 
 #cleaned list of all directories containing *.h files
 H_DIRS	:=	$(sort $(subst /drivers/,/include/,$(foreach file,$(H_FILES),$(dir $(file)))))
-H_DIRS	+=	/include/sys/
+H_DIRS	+=	/include/sys/ /include/lwip/ /include/netif/ /include/arch/

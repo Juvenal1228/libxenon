@@ -17,6 +17,16 @@ install: installdirs
 	@for hfile in $(H_FILES) ; do \
 		install "../libxenon$${hfile}" "$(dir)$$(dirname $${hfile} | sed 's/drivers/include/')" ; \
 	done
+	@echo installing lwip...
+	@for hfile in $(H_LWIP_FILES) $(H_LWIPMODE_FILES); do \
+		install "../libxenon$${hfile}" "$(dir)/include/lwip/" ; \
+	done
+	@for hfile in $(H_NETIF_FILES) ; do \
+		install "../libxenon$${hfile}" "$(dir)/include/netif/" ; \
+	done
+	@for hfile in $(H_ARCH_FILES) ; do \
+		install "../libxenon$${hfile}" "$(dir)/include/arch/" ; \
+	done
 	@install "../libxenon/drivers/newlib/dirent.h" "$(dir)/include/sys/"
 	@echo installing libraries...
 	@install libxenon.a "$(dir)/lib/"
@@ -27,3 +37,28 @@ install: installdirs
 	@install libxenon/ports/xenon/crti.o "$(DESTDIR)$(PREFIX)/lib"
 	@install libxenon/ports/xenon/crtn.o "$(DESTDIR)$(PREFIX)/lib"
 	@echo install done!
+
+debug:
+	@echo H_FILES
+	@echo $(H_FILES)
+	@echo
+	@echo
+	@echo H_LWIP_FILES
+	@echo $(H_LWIP_FILES)
+	@echo
+	@echo
+	@echo H_LWIPMODE_FILES
+	@echo $(H_LWIPMODE_FILES)
+	@echo
+	@echo
+	@echo H_NETIF_FILES
+	@echo $(H_NETIF_FILES)
+	@echo
+	@echo
+	@echo H_ARCH_FILES
+	@echo $(H_ARCH_FILES)
+	@echo
+	@echo
+	@echo H_DIRS
+	@echo $(H_DIRS)
+

@@ -8,7 +8,6 @@ RM := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
--include usr/xenon/lib/subdir.mk
 -include libxenon/startup/xenon/subdir.mk
 -include libxenon/ports/xenon/subdir.mk
 -include libxenon/drivers/xenos/subdir.mk
