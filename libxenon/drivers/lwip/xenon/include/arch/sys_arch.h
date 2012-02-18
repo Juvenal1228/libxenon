@@ -56,7 +56,7 @@ typedef struct _sys_sem sys_sem_t;
 /* MBOX */
 
 #ifndef MAX_QUEUE_ENTRIES
-#define MAX_QUEUE_ENTRIES 100
+#define MAX_QUEUE_ENTRIES 1000
 #endif
 
 #define SYS_MBOX_NULL NULL

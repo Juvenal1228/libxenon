@@ -105,7 +105,7 @@ void sys_sem_free(sys_sem_t *sem)
 
 u32_t sys_arch_sem_wait(sys_sem_t *sem, u32_t timeout)
 {
-    LWIP_DEBUGF(SYS_ARCH_DEBUG, ("sys_arch_sem_wait(timeout=%0u)\n", timeout));
+    LWIP_DEBUGF(SYS_ARCH_DEBUG, ("sasw(t=%0u)\n", timeout));
     
     LWIP_ASSERT("sem != NULL", sem != NULL);
     u32_t start, end;
@@ -130,7 +130,7 @@ u32_t sys_arch_sem_wait(sys_sem_t *sem, u32_t timeout)
 void sys_sem_signal(sys_sem_t *sem)
 {
     //Release the mutex
-    LWIP_DEBUGF(SYS_ARCH_DEBUG, ("sys_sem_signal()\n"));
+    LWIP_DEBUGF(SYS_ARCH_DEBUG, ("sss()\n"));
     LWIP_ASSERT("sem != NULL", sem != NULL);
     LWIP_ASSERT("sem->sem != NULL", sem->sem != NULL);
     mutex_release(sem->sem);
@@ -175,11 +175,11 @@ void sys_mbox_free(sys_mbox_t *mbox)
 //Currently just writes regardless of where the tail is
 void sys_mbox_post(sys_mbox_t *mbox, void *msg)
 {
-    LWIP_DEBUGF(SYS_ARCH_DEBUG, ("sys_mbox_post()\n"));
+    LWIP_DEBUGF(SYS_ARCH_DEBUG, ("smp()\n"));
     LWIP_ASSERT("mbox != SYS_MBOX_NULL", mbox != SYS_MBOX_NULL);
     LWIP_ASSERT("mbox->sem != NULL", mbox->sem != NULL);
     
-    mutex_acquire(mbox->lock, INFINITE);
+    LWIP_ASSERT("mbox->lock locked", mutex_acquire(mbox->lock, 1000) != 0);
     mbox->q_mem[mbox->head] = msg;
     (mbox->head)++;
     if (mbox->head >= MAX_QUEUE_ENTRIES) {
@@ -192,11 +192,11 @@ void sys_mbox_post(sys_mbox_t *mbox, void *msg)
 
 err_t sys_mbox_trypost(sys_mbox_t *mbox, void *msg)
 {
-    LWIP_DEBUGF(SYS_ARCH_DEBUG, ("sys_mbox_trypost()\n"));
+    LWIP_DEBUGF(SYS_ARCH_DEBUG, ("smtp()\n"));
     LWIP_ASSERT("mbox != SYS_MBOX_NULL", mbox != SYS_MBOX_NULL);
     LWIP_ASSERT("mbox->sem != NULL", mbox->sem != NULL);
     
-    mutex_acquire(mbox->lock, INFINITE);
+    LWIP_ASSERT("mbox->lock locked", mutex_acquire(mbox->lock, 1000) != 0);
     u32_t new_head = mbox->head + 1;
     if (new_head >= MAX_QUEUE_ENTRIES) {
         new_head = 0;
@@ -216,7 +216,7 @@ err_t sys_mbox_trypost(sys_mbox_t *mbox, void *msg)
 
 u32_t sys_arch_mbox_fetch(sys_mbox_t *mbox, void **msg, u32_t timeout)
 {
-    LWIP_DEBUGF(SYS_ARCH_DEBUG,("sys_mbox_fetch(timeout=%i)\n", timeout));
+    LWIP_DEBUGF(SYS_ARCH_DEBUG,("smf(t=%i)\n", timeout));
     LWIP_ASSERT("mbox != SYS_MBOX_NULL", mbox != SYS_MBOX_NULL);
     LWIP_ASSERT("mbox->sem != NULL", mbox->sem != NULL);
     
@@ -255,7 +255,7 @@ u32_t sys_arch_mbox_fetch(sys_mbox_t *mbox, void **msg, u32_t timeout)
 
 u32_t sys_arch_mbox_tryfetch(sys_mbox_t *mbox, void **msg)
 {
-    LWIP_DEBUGF(SYS_ARCH_DEBUG, ("sys_mbox_tryfetch()\n"));
+    LWIP_DEBUGF(SYS_ARCH_DEBUG, ("smtf()\n"));
     LWIP_ASSERT("mbox != SYS_MBOX_NULL", mbox != SYS_MBOX_NULL);
     LWIP_ASSERT("mbox->sem != NULL", mbox->sem != NULL);
     
@@ -264,10 +264,9 @@ u32_t sys_arch_mbox_tryfetch(sys_mbox_t *mbox, void **msg)
         if (msg != NULL) {
             *msg = NULL;
         }
-        mutex_release(mbox->lock);
         return SYS_MBOX_EMPTY;
     }
-    mutex_acquire(mbox->lock, INFINITE);
+    LWIP_ASSERT("mbox->lock locked", mutex_acquire(mbox->lock, 1000) != 0);
     if (msg != NULL) {
         *msg = mbox->q_mem[mbox->tail];
     }
@@ -289,7 +288,7 @@ sys_thread_t sys_thread_new(const char *name, lwip_thread_fn thread, void *arg, 
     LWIP_UNUSED_ARG(prio);
     
     //create the actual thread
-    PTHREAD pthrd = thread_create(thread, stacksize, arg, prio);
+    PTHREAD pthrd = thread_create(thread, 0, arg, 0);
     LWIP_ASSERT("pthrd != NULL", pthrd != NULL);
     thread_resume(pthrd);
 

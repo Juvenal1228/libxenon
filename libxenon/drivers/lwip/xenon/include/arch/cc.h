@@ -35,6 +35,8 @@
 #ifndef __ARCH_CC_H__
 #define __ARCH_CC_H__
 
+#include <sys/time.h>
+
 typedef unsigned   char    u8_t;
 typedef signed     char    s8_t;
 typedef unsigned   short   u16_t;

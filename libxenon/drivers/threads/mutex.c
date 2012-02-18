@@ -57,43 +57,38 @@ unsigned int mutex_acquire(MUTEX *mutex, int timeout)
     {
         // We own this mutex
         mutex->CurrentLockCount++;
-        acquired = 1;
-    }
-    else
-    {
-        // Add ourself to the list on the object
-        PTHREAD pthr = thread_get_current();
-        pthr->PreviousThreadMutex = mutex->LastWaiting;
-        pthr->NextThreadMutex = mutex->FirstWaiting;
-        if(mutex->FirstWaiting)
-            mutex->FirstWaiting->PreviousThreadMutex = pthr;
-        else
-            mutex->FirstWaiting = pthr;
-        if(mutex->LastWaiting)
-            mutex->LastWaiting->NextThreadMutex = pthr;
-        mutex->LastWaiting = pthr;
-    }
-    
-    unlock(&mutex->Lock);
-    
-    if(acquired)
+        unlock(&mutex->Lock);
         return 1;
+    }
+
+	// Add ourself to the list on the object
+	PTHREAD pthr = thread_get_current();
+	pthr->PreviousThreadMutex = mutex->LastWaiting;
+	pthr->NextThreadMutex = mutex->FirstWaiting;
+	if(mutex->FirstWaiting)
+		mutex->FirstWaiting->PreviousThreadMutex = pthr;
+	else
+		mutex->FirstWaiting = pthr;
+	if(mutex->LastWaiting)
+		mutex->LastWaiting->NextThreadMutex = pthr;
+	mutex->LastWaiting = pthr;
     
-    // Wait for the timeout
-    thread_get_current()->WaitingForMutex = 1;
+	pthr->WaitingForMutex = 1;
+
+	// Wait for the mutex
+    unlock(&mutex->Lock);
     thread_sleep(timeout);
-    
-    // Lock
     lock(&mutex->Lock);
-    //unsigned int irql = thread_spinlock(&ThreadListLock);
     
     // Check the result
-    if(thread_get_current()->WaitingForMutex)
+    if(pthr->WaitingForMutex)
     {
         acquired = 0;
         
+        // Lock the thread list before we play
+        unsigned int irql = thread_spinlock(&ThreadListLock);
+
         // Remove ourself from the mutex list
-        PTHREAD pthr = thread_get_current();
         if (pthr->NextThreadMutex)
             pthr->NextThreadMutex->PreviousThreadMutex = pthr->PreviousThreadMutex;
         if (pthr->PreviousThreadMutex)
@@ -106,12 +101,14 @@ unsigned int mutex_acquire(MUTEX *mutex, int timeout)
             mutex->FirstWaiting = NULL;
         if(mutex->LastWaiting == pthr)
             mutex->LastWaiting = NULL;
+
+        // Unlock the thread list
+        thread_unlock(&ThreadListLock, irql);
     }
     else
         acquired = 1;
     
     // Unlock
-    //thread_unlock(&ThreadListLock, irql);
     unlock(&mutex->Lock);
     
     // Exit
@@ -123,7 +120,10 @@ void mutex_release(MUTEX *mutex)
 {
     lock(&mutex->Lock);
     
-    mutex->CurrentLockCount--;
+    if (mutex->CurrentLockCount > 0)
+        mutex->CurrentLockCount--;
+    // Lock the thread list before we play
+    unsigned int irql = thread_spinlock(&ThreadListLock);
     while(mutex->FirstWaiting && (mutex->CurrentLockCount < mutex->MaximumLockCount))
     {
         // Check for and wake up threads until we can fill the mutex
@@ -144,5 +144,7 @@ void mutex_release(MUTEX *mutex)
         // Increment the counter
         mutex->CurrentLockCount++;
     }
+    // Unlock the thread list
+    thread_unlock(&ThreadListLock, irql);
     unlock(&mutex->Lock);
 }
