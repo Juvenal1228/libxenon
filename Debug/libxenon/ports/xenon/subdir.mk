@@ -20,7 +20,7 @@ OBJS += \
 libxenon/ports/xenon/%.o: ../libxenon/ports/xenon/%.S
 	@echo 'Building file: $<'
 	@echo 'Invoking: Cross GCC Assembler'
-	xenon-gcc -m32 -c -I"/home/amorton/Source/xenon/libxenon/libxenon/include" -I"/home/amorton/Source/xenon/libxenon/libxenon/drivers" -I"/home/amorton/Source/xenon/libxenon/libxenon/drivers/nocfe" -I"/home/amorton/Source/xenon/libxenon/libxenon/drivers/lwip/include" -I"/home/amorton/Source/xenon/libxenon/libxenon/drivers/lwip/include/ipv4" -I"/home/amorton/Source/xenon/libxenon/libxenon/drivers/lwip/xenon/include" -o "$@" "$<"
+	xenon-gcc -m32 -c -I.././libxenon/include -I.././libxenon/drivers -I.././libxenon/drivers/nocfe -I.././libxenon/drivers/lwip/include -I.././libxenon/drivers/lwip/include/ipv4 -I.././libxenon/drivers/lwip/xenon/include -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
